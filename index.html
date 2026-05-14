@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Themenkarten</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;background:#f0f0f0;min-height:100vh;overscroll-behavior:none;}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ── MENU ── */
+.menu-header{background:#fff;padding:1.5rem 1.25rem 1rem;border-bottom:1px solid #e8e8e8;}
+.menu-header h1{font-size:1.8rem;font-weight:800;color:#111;letter-spacing:-0.5px;}
+.menu-header p{font-size:.875rem;color:#888;margin-top:.2rem;}
+.category-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:1.25rem;}
+@media(min-width:600px){.category-grid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:900px){.category-grid{grid-template-columns:repeat(4,1fr);max-width:960px;margin:0 auto;width:100%;}}
+
+.cat-tile{border-radius:14px;padding:1.25rem 1rem 1rem;cursor:pointer;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .12s,box-shadow .12s;box-shadow:0 2px 8px rgba(0,0,0,.12);user-select:none;}
+.cat-tile:active{transform:scale(.96);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.cat-tile-name{font-size:.95rem;font-weight:700;color:#fff;line-height:1.25;}
+.cat-tile-count{font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.2rem;}
+.cat-badge{display:inline-block;font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:20px;margin-top:.6rem;letter-spacing:.2px;}
+.badge-new{background:rgba(255,255,255,.22);color:#fff;}
+.badge-progress{background:rgba(255,220,0,.3);color:#fff;}
+.badge-done{background:rgba(0,230,100,.28);color:#fff;}
+
+/* ── BACK / HEADER ── */
+.top-bar{background:#fff;border-bottom:1px solid #e8e8e8;}
+.btn-back{background:none;border:none;font-size:.875rem;color:#555;cursor:pointer;padding:.875rem 1.25rem;display:flex;align-items:center;gap:6px;font-weight:500;}
+.btn-back:active{color:#111;}
+.title-bar{display:flex;align-items:center;gap:.75rem;padding:.5rem 1.25rem 1rem;}
+.title-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.title-text{font-size:1.15rem;font-weight:700;color:#111;}
+
+/* ── START SCREEN ── */
+.start-body{padding:1.75rem 1.25rem;display:flex;flex-direction:column;align-items:center;gap:1.5rem;flex:1;}
+.expl-visual{width:100%;max-width:340px;}
+.expl-text{font-size:.875rem;color:#666;text-align:center;max-width:310px;line-height:1.65;}
+.expl-text strong{color:#333;}
+.start-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;max-width:340px;}
+.btn-primary{flex:1;min-width:130px;padding:.875rem 1rem;border-radius:12px;border:none;font-size:.95rem;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.1px;transition:opacity .15s;}
+.btn-primary:active{opacity:.85;}
+.btn-secondary{flex:1;min-width:130px;padding:.875rem 1rem;border-radius:12px;border:2px solid #ddd;background:#fff;font-size:.95rem;font-weight:700;color:#444;cursor:pointer;transition:background .15s;}
+.btn-secondary:active{background:#f5f5f5;}
+
+/* ── SWIPE SCREEN ── */
+.swipe-header{background:#fff;padding:.75rem 1rem;display:flex;align-items:center;gap:.875rem;border-bottom:1px solid #e8e8e8;}
+.swipe-back{background:none;border:none;font-size:1.3rem;cursor:pointer;color:#555;padding:4px 8px;border-radius:8px;}
+.swipe-back:active{background:#f0f0f0;}
+.progress-wrap{flex:1;display:flex;flex-direction:column;gap:5px;}
+.progress-track{height:5px;background:#eee;border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.progress-label{font-size:.75rem;color:#aaa;text-align:right;letter-spacing:.2px;}
+
+.card-area{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem 1.25rem;position:relative;overflow:hidden;}
+.hint{position:absolute;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;}
+.hint-left{left:12px;}
+.hint-right{right:12px;}
+.hint-icon{font-size:1.6rem;}
+.hint-lbl{font-size:.6rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;}
+.hint-left .hint-icon,.hint-left .hint-lbl{color:#e74c3c;opacity:.35;}
+.hint-right .hint-icon,.hint-right .hint-lbl{color:#27ae60;opacity:.35;}
+
+.card-stack{position:relative;width:100%;max-width:350px;height:230px;}
+@media(min-width:480px){.card-stack{max-width:400px;height:260px;}}
+@media(min-width:768px){.card-stack{max-width:460px;height:290px;}}
+
+.card-ghost{position:absolute;border-radius:16px;background:#fff;}
+.card-ghost-2{top:10px;left:8px;right:8px;bottom:-10px;opacity:.45;}
+.card-ghost-1{top:5px;left:4px;right:4px;bottom:-5px;opacity:.7;}
+
+#swipe-card{position:absolute;inset:0;border-radius:16px;background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.11);display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;user-select:none;will-change:transform;}
+#swipe-card:active{cursor:grabbing;}
+
+.ov{position:absolute;inset:0;border-radius:16px;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:background .05s;}
+#ov-left{background:rgba(231,76,60,0);}
+#ov-right{background:rgba(39,174,96,0);}
+.ov-icon{font-size:3.5rem;font-weight:800;opacity:0;transition:opacity .05s;}
+#ov-left .ov-icon{color:#c0392b;}
+#ov-right .ov-icon{color:#1e8449;}
+
+.card-inner{padding:2rem 1.5rem;text-align:center;width:100%;position:relative;z-index:1;}
+.card-text{font-size:1.1rem;font-weight:500;color:#111;line-height:1.55;}
+@media(min-width:480px){.card-text{font-size:1.2rem;}}
+.motive-top{font-size:.7rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#aaa;margin-bottom:.5rem;}
+.motive-divider{width:36px;height:2px;background:#e8e8e8;margin:.6rem auto;}
+.motive-bottom{font-size:1.3rem;font-weight:700;color:#111;}
+@media(min-width:480px){.motive-bottom{font-size:1.5rem;}}
+
+.swipe-btns{display:flex;justify-content:center;gap:2.5rem;padding:1.25rem 1.25rem 2rem;}
+.swipe-btn{width:58px;height:58px;border-radius:50%;border:2.5px solid;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;transition:transform .12s,box-shadow .12s;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+.swipe-btn:active{transform:scale(.88);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.btn-no{border-color:#e74c3c;color:#e74c3c;}
+.btn-yes{border-color:#27ae60;color:#27ae60;}
+
+/* ── RESULT SCREEN ── */
+.result-body{padding:1.5rem 1.25rem;flex:1;}
+.result-stacks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;}
+.result-stack{border-radius:14px;padding:1.5rem 1rem 1.25rem;cursor:pointer;text-align:center;border:2.5px solid transparent;transition:border-color .15s,transform .12s;user-select:none;}
+.result-stack:active{transform:scale(.97);}
+.rstack-green{background:#eafaf1;}
+.rstack-red{background:#fdedec;}
+.rstack-green.rstack-open{border-color:#27ae60;}
+.rstack-red.rstack-open{border-color:#e74c3c;}
+.stack-num{font-size:2.75rem;font-weight:800;line-height:1;}
+.num-green{color:#27ae60;}
+.num-red{color:#e74c3c;}
+.stack-lbl{font-size:.75rem;font-weight:700;margin-top:.45rem;letter-spacing:.1px;}
+.lbl-green{color:#1a7a40;}
+.lbl-red{color:#922b21;}
+
+.list-panel{background:#fff;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;}
+.list-panel h3{font-size:.875rem;font-weight:700;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #f0f0f0;}
+.list-scroll{max-height:280px;overflow-y:auto;}
+.list-item{padding:.45rem 0;border-bottom:1px solid #f5f5f5;font-size:.875rem;color:#333;line-height:1.4;}
+.list-item:last-child{border-bottom:none;}
+.list-empty{font-size:.875rem;color:#bbb;padding:.5rem 0;}
+
+.btn-menu-main{width:100%;padding:.9rem;border-radius:12px;background:#111;color:#fff;border:none;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:1rem;transition:opacity .15s;}
+.btn-menu-main:active{opacity:.8;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 1 · HAUPTMENÜ
+═══════════════════════════════════════ -->
+<div id="screen-menu" class="screen">
+  <div class="menu-header">
+    <h1>Themenkarten</h1>
+    <p>Wähle eine Kategorie</p>
+  </div>
+  <div class="category-grid" id="cat-grid"></div>
+  <div style="text-align:center;padding:1.25rem 1rem 1.75rem;font-size:.78rem;color:#bbb;letter-spacing:.2px;">Thomas Pawlik &nbsp;·&nbsp; Mai 2026</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 2 · KATEGORIE-START
+═══════════════════════════════════════ -->
+<div id="screen-start" class="screen">
+  <div class="top-bar">
+    <button class="btn-back" onclick="goMenu()">← Zurück</button>
+    <div class="title-bar">
+      <div class="title-dot" id="s-dot"></div>
+      <div class="title-text" id="s-title"></div>
+    </div>
+  </div>
+  <div class="start-body">
+    <svg class="expl-visual" viewBox="0 0 320 165" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="cs" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="rgba(0,0,0,.12)"/>
+        </filter>
+      </defs>
+      <!-- shadow cards -->
+      <rect x="88" y="30" width="148" height="105" rx="11" fill="#f0f0f0"/>
+      <rect x="84" y="26" width="152" height="108" rx="12" fill="#f7f7f7"/>
+      <!-- main card -->
+      <rect x="80" y="22" width="160" height="112" rx="13" fill="white" filter="url(#cs)"/>
+      <text x="160" y="74" font-size="11" fill="#bbb" text-anchor="middle" font-family="-apple-system,sans-serif">Begriff /</text>
+      <text x="160" y="90" font-size="11" fill="#bbb" text-anchor="middle" font-family="-apple-system,sans-serif">Aussage</text>
+      <!-- left arrow -->
+      <line x1="68" y1="78" x2="52" y2="78" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="52,73 41,78 52,83" fill="#e74c3c"/>
+      <!-- left labels -->
+      <text x="28" y="67" font-size="22" fill="#e74c3c" text-anchor="middle">✗</text>
+      <text x="28" y="98" font-size="9" fill="#e74c3c" text-anchor="middle" font-weight="bold" font-family="-apple-system,sans-serif">NEIN</text>
+      <text x="28" y="111" font-size="8.5" fill="#e74c3c" text-anchor="middle" font-family="-apple-system,sans-serif">Negativ</text>
+      <!-- right arrow -->
+      <line x1="252" y1="78" x2="268" y2="78" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="268,73 279,78 268,83" fill="#27ae60"/>
+      <!-- right labels -->
+      <text x="297" y="67" font-size="22" fill="#27ae60" text-anchor="middle">✓</text>
+      <text x="297" y="98" font-size="9" fill="#27ae60" text-anchor="middle" font-weight="bold" font-family="-apple-system,sans-serif">JA</text>
+      <text x="297" y="111" font-size="8.5" fill="#27ae60" text-anchor="middle" font-family="-apple-system,sans-serif">Positiv</text>
+      <!-- bottom hint -->
+      <text x="160" y="152" font-size="9" fill="#aaa" text-anchor="middle" font-family="-apple-system,sans-serif">← Schieben oder Buttons nutzen →</text>
+    </svg>
+    <p class="expl-text">Schiebe die Karte nach <strong>rechts</strong>, wenn der Begriff / Satz auf dich zutrifft. Nach <strong>links</strong>, wenn er nicht zutrifft.</p>
+    <div class="start-actions" id="s-actions"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 3 · SWIPE
+═══════════════════════════════════════ -->
+<div id="screen-swipe" class="screen">
+  <div class="swipe-header">
+    <button class="swipe-back" onclick="goMenu()">←</button>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="progress-label" id="prog-lbl">0 / 0</div>
+    </div>
+  </div>
+  <div class="card-area">
+    <div class="hint hint-left"><div class="hint-icon">✗</div><div class="hint-lbl">Nein</div></div>
+    <div class="hint hint-right"><div class="hint-icon">✓</div><div class="hint-lbl">Ja</div></div>
+    <div class="card-stack" id="card-stack">
+      <div class="card-ghost card-ghost-2"></div>
+      <div class="card-ghost card-ghost-1"></div>
+      <div id="swipe-card">
+        <div class="ov" id="ov-left"><span class="ov-icon">✗</span></div>
+        <div class="ov" id="ov-right"><span class="ov-icon">✓</span></div>
+        <div class="card-inner" id="card-content"></div>
+      </div>
+    </div>
+  </div>
+  <div class="swipe-btns">
+    <button class="swipe-btn btn-no" onclick="choose('left')">✗</button>
+    <button class="swipe-btn btn-yes" onclick="choose('right')">✓</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 4 · ERGEBNIS
+═══════════════════════════════════════ -->
+<div id="screen-result" class="screen">
+  <div class="top-bar">
+    <button class="btn-back" onclick="goMenu()">← Hauptmenü</button>
+    <div class="title-bar">
+      <div class="title-dot" id="r-dot"></div>
+      <div class="title-text" id="r-title"></div>
+    </div>
+  </div>
+  <div class="result-body">
+    <div class="result-stacks">
+      <div class="result-stack rstack-green" id="rs-green" onclick="toggleList('green')">
+        <div class="stack-num num-green" id="cnt-green">0</div>
+        <div class="stack-lbl lbl-green">✓ Ja / Positiv</div>
+      </div>
+      <div class="result-stack rstack-red" id="rs-red" onclick="toggleList('red')">
+        <div class="stack-num num-red" id="cnt-red">0</div>
+        <div class="stack-lbl lbl-red">✗ Nein / Negativ</div>
+      </div>
+    </div>
+    <div id="list-green" class="list-panel" style="display:none;"></div>
+    <div id="list-red" class="list-panel" style="display:none;"></div>
+    <button class="btn-menu-main" onclick="goMenu()">← Zurück zum Hauptmenü</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+const CATS = [
+  {key:'beeil',name:'Beeil Dich',color:'#A93226',items:[
+    'Ich bin eigentlich ständig in Bewegung und beschäftigt.',
+    'Zeit ist Geld!',
+    'Ich unterbreche andere oft, wenn sie weitschweifig etwas erklären wollen.',
+    'Ich mache oft mehrere Dinge gleichzeitig.',
+    'In einer Gruppe bin ich in der Regel der Motor, der alle antreibt.'
+  ]},
+  {key:'gefuehle',name:'Gefühle',color:'#D4720A',items:[
+    'ängstlich','ärgerlich','aufgeregt','befreundet','begeistert','beklommen',
+    'bekümmert','bemitleidenswert','beschämt','eifersüchtig','einsam','eklig',
+    'energisch','entspannt','enttäuscht','erfreut','erregt','erschöpft',
+    'frei','freundschaftlich','geborgen','geehrt','gelassen','gleichgültig',
+    'glücklich','hoffnungsvoll','hungrig','interessant','langweilig','liebevoll',
+    'lustig','lustvoll','mitleidig','müde','neidisch','nervös',
+    'panisch','pflichterfüllt','reuevoll','reuig','schmerzlich','schuldig',
+    'spaßig','stolz','sympathisch','traurig','überrascht','unbehaglich',
+    'ungeduldig','verantwortlich','verärgert','verhasst','verliebt','verpflichtet',
+    'verzweifelt','wohlbehaglich','wütend','zufrieden','zugeneigt'
+  ]},
+  {key:'mach',name:'Mach es allen recht',color:'#A93226',items:[
+    'Es fällt mir schwer, nein zu sagen.',
+    'Vor anderen akzeptiert zu werden, ist für mich wichtiger, als meine Interessen durchzuboxen.',
+    'Ich nicke viel mit dem Kopf.',
+    'Positive Rückmeldungen von anderen sind sehr wichtig für mich, sonst bin ich unzufrieden mit mir.',
+    'Ich bemühe mich immer, so diplomatisch wie möglich zu sein.'
+  ]},
+  {key:'motive',name:'Motive',color:'#8B6914',motive:true,items:[
+    'WISSEN / intellektuell','WISSEN / pragmatisch',
+    'PRINZIPIENTREUE / prinzipienorientiert','PRINZIPIENTREUE / zweckorientiert',
+    'MACHT / führend','MACHT / geführt',
+    'STATUS / elitär','STATUS / bodenständig',
+    'ORDNUNG / strukturiert','ORDNUNG / flexibel',
+    'MATERIELLE SICHERHEIT / festhaltend','MATERIELLE SICHERHEIT / grosszügig',
+    'FREIHEIT / eigenständig','FREIHEIT / teamorientiert',
+    'BEZIEHUNG / kontaktfreudig','BEZIEHUNG / distanziert',
+    'HILFE & FÜRSORGE / fürsorglich','HILFE & FÜRSORGE / eigennützig',
+    'FAMILIE / familienorientiert','FAMILIE / selbstbezogen',
+    'IDEALISMUS / idealistisch','IDEALISMUS / realistisch',
+    'ANERKENNUNG / sensibel','ANERKENNUNG / selbstsicher',
+    'WETTKAMPF / kämpferisch','WETTKAMPF / ausgleichend',
+    'RISIKO / risikofreudig','RISIKO / risikobewusst',
+    'ESSEN / genießerisch','ESSEN / genügsam',
+    'KÖRPERLICHE AKTIVITÄT / bewegungsfreudig','KÖRPERLICHE AKTIVITÄT / bequem',
+    'SINNLICHKEIT / sinnlich','SINNLICHKEIT / sachlich',
+    'SPIRITUALITÄT / sinnsuchend','SPIRITUALITÄT / rational'
+  ]},
+  {key:'perfekt',name:'Sei perfekt',color:'#A93226',items:[
+    'Wenn ich eine Arbeit mache, dann immer gründlich und fehlerfrei.',
+    'Ich mag es nicht, wenn andere schlampiger arbeiten als ich.',
+    'Meistens bin ich nicht zufrieden, wenn ich eine Aufgabe beende – ich finde immer noch etwas zu verbessern.',
+    'Besser als andere zu sein, ist für mich sehr wichtig.',
+    'Mein Gesichtsausdruck ist meist eher ruhig und konzentriert.'
+  ]},
+  {key:'stark',name:'Sei stark',color:'#A93226',items:[
+    'Ich komme weitgehend alleine zurecht.',
+    'Es gibt wenige Menschen, denen ich wirklich vertraue.',
+    '„Wie´s da drin aussieht, geht keinen was an!" ist meine Devise.',
+    'Damit ich wegen Krankheit zu Hause bleibe, muss es mir schon wirklich äußerst schlecht gehen.',
+    'Mich erschüttert nichts so leicht.'
+  ]},
+  {key:'streng',name:'Streng dich an',color:'#A93226',items:[
+    '„Nicht nachlassen zwingt alles"! ist meine Devise.',
+    'Erfolge muss man sich hart erarbeiten.',
+    'Wenn ich etwas anfange, dann bringe ich es auch zu Ende.',
+    'Oft habe ich das Gefühl, dass ich nicht schaffe, was ich mir vorgenommen habe.',
+    'Einfach nur in den Tag hineinzuleben, käme für mich nicht in Frage.'
+  ]},
+  {key:'werte',name:'Werte',color:'#8B6914',items:[
+    'Abgrenzung','Aktivität','Akzeptanz','Ansehen','Ästhetik','Aufmerksamkeit',
+    'Ausgeglichenheit','Autarkie','Authentizität','Beachtung','Bequemlichkeit',
+    'Bestätigung','Bewegung','Bildung','Bodenständigkeit','Dienstleister','Distanz',
+    'Disziplin','Effektivität','Effizienz','Ehrlichkeit','Eigennutzen','Eigentum',
+    'Einfluss','Erholung','Erklärbarkeit','Ernsthaftigkeit','Fairness','Familienleben',
+    'Fitness','Flexibilität','Freigebigkeit','Freiraum','Gemeinsamkeit','Gemütlichkeit',
+    'Genügsamkeit','Genuss','Lust','Menschlichkeit','Nervenkitzel','Nüchternheit',
+    'Nutzen','Praxis','Purismus','Rationalität','Realismus','Religion','Reserven',
+    'Risikobereitschaft','Robustheit','Ruhe','Ruhm','Sachorientierung','Schönheit',
+    'Selbstbewusstsein','Selbstgenügsamkeit','Selbstlosigkeit','Selbstsicherheit',
+    'Sensibilität','Sexualität','Sieg','Souveränität','Sozialer Ausgleich','Sparen',
+    'Spontanität','Stabilität','Struktur','Teamorientierung','Toleranz','Tradition',
+    'Trendbewusstsein','Unabhängigkeit','Unterordnung','Unterstützung','Verantwortung',
+    'Verbindlichkeit','Verlässlichkeit','Vernunft','Wahrheit','Wohlwollen',
+    'Zugehörigkeit','Zurückhaltung','Zusammenhänge','Zweck'
+  ]}
+];
+
+// ═══════════════════════════════════════
+// STATE (localStorage)
+// ═══════════════════════════════════════
+const SK = k => 'tc_' + k;
+
+function initState(k){
+  return {green:[],red:[],idx:0,status:'new'};
+}
+function loadState(k){
+  try{
+    const r = localStorage.getItem(SK(k));
+    if(r) return JSON.parse(r);
+  }catch(e){}
+  return initState(k);
+}
+function saveS(k,s){
+  try{ localStorage.setItem(SK(k), JSON.stringify(s)); }catch(e){}
+}
+function getS(k){ return loadState(k); }
+function setS(k,s){ saveS(k,s); }
+
+// ═══════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function goMenu(){
+  showScreen('menu');
+  renderMenu();
+}
+
+// ═══════════════════════════════════════
+// MENU
+// ═══════════════════════════════════════
+function renderMenu(){
+  const grid = document.getElementById('cat-grid');
+  grid.innerHTML = '';
+  CATS.forEach(cat=>{
+    const s = getS(cat.key);
+    const tile = document.createElement('div');
+    tile.className = 'cat-tile';
+    tile.style.background = cat.color;
+    let badge='', bc='';
+    if(s.status==='done'){badge='✓ Abgeschlossen';bc='badge-done';}
+    else if(s.status==='progress'){badge='In Bearbeitung';bc='badge-progress';}
+    else{badge='Neu';bc='badge-new';}
+    tile.innerHTML = `<div class="cat-tile-name">${cat.name}</div><div class="cat-tile-count">${cat.items.length} Karten</div><span class="cat-badge ${bc}">${badge}</span>`;
+    tile.onclick = () => openStart(cat.key);
+    grid.appendChild(tile);
+  });
+}
+
+// ═══════════════════════════════════════
+// START SCREEN
+// ═══════════════════════════════════════
+let activeCatKey = null;
+
+function openStart(key){
+  activeCatKey = key;
+  const cat = CATS.find(c=>c.key===key);
+  const s = getS(key);
+  document.getElementById('s-dot').style.background = cat.color;
+  document.getElementById('s-title').textContent = cat.name;
+
+  const acts = document.getElementById('s-actions');
+  acts.innerHTML = '';
+
+  if(s.status==='done'){
+    const b1 = document.createElement('button');
+    b1.className='btn-primary'; b1.style.background=cat.color;
+    b1.textContent='Ergebnis anzeigen';
+    b1.onclick = ()=>openResult(key);
+    const b2 = document.createElement('button');
+    b2.className='btn-secondary';
+    b2.textContent='Neu starten';
+    b2.onclick = ()=>{ setS(key,initState(key)); launchSwipe(key); };
+    acts.appendChild(b1); acts.appendChild(b2);
+  } else {
+    const b = document.createElement('button');
+    b.className='btn-primary'; b.style.background=cat.color;
+    b.textContent = s.status==='progress' ? 'Weitermachen' : 'Starten';
+    b.onclick = ()=>launchSwipe(key);
+    acts.appendChild(b);
+  }
+  showScreen('start');
+}
+
+// ═══════════════════════════════════════
+// SWIPE ENGINE
+// ═══════════════════════════════════════
+let swipeCat = null;
+let swipeIdx = 0;
+let busy = false;
+let dragging = false, sx=0, dx=0;
+
+function launchSwipe(key){
+  swipeCat = CATS.find(c=>c.key===key);
+  const s = getS(key);
+  swipeIdx = s.idx||0;
+  document.getElementById('prog-fill').style.background = swipeCat.color;
+  showScreen('swipe');
+  renderCard();
+}
+
+function renderCard(){
+  const cat = swipeCat;
+  const s = getS(cat.key);
+  const total = cat.items.length;
+  const pct = total>0 ? Math.round((swipeIdx/total)*100) : 0;
+  document.getElementById('prog-fill').style.width = pct+'%';
+  document.getElementById('prog-lbl').textContent = swipeIdx+' / '+total;
+
+  if(swipeIdx >= total){ finish(); return; }
+
+  const item = cat.items[swipeIdx];
+  const el = document.getElementById('card-content');
+  if(cat.motive && item.includes(' / ')){
+    const [top,bot] = item.split(' / ');
+    el.innerHTML = `<div class="motive-top">${top}</div><div class="motive-divider"></div><div class="motive-bottom">${bot}</div>`;
+  } else {
+    el.innerHTML = `<div class="card-text">${item}</div>`;
+  }
+
+  const card = document.getElementById('swipe-card');
+  card.style.transition = 'none';
+  card.style.transform = 'translateX(0) rotate(0deg)';
+  card.style.opacity = '1';
+  resetOverlays();
+  busy = false;
+}
+
+function resetOverlays(){
+  document.getElementById('ov-left').style.background = 'rgba(231,76,60,0)';
+  document.getElementById('ov-right').style.background = 'rgba(39,174,96,0)';
+  document.getElementById('ov-left').querySelector('.ov-icon').style.opacity='0';
+  document.getElementById('ov-right').querySelector('.ov-icon').style.opacity='0';
+}
+
+function choose(dir){
+  if(busy) return;
+  busy = true;
+  dragging = false;
+
+  const cat = swipeCat;
+  const item = cat.items[swipeIdx];
+  const s = getS(cat.key);
+  if(dir==='right') s.green.push(item);
+  else s.red.push(item);
+  swipeIdx++;
+  s.idx = swipeIdx;
+  s.status = swipeIdx >= cat.items.length ? 'done' : 'progress';
+  setS(cat.key, s);
+
+  const card = document.getElementById('swipe-card');
+  const vw = window.innerWidth;
+  const tx = dir==='right' ? vw+100 : -(vw+100);
+  const rot = dir==='right' ? 18 : -18;
+  card.style.transition = 'transform .32s ease-in, opacity .32s';
+  card.style.transform = `translateX(${tx}px) rotate(${rot}deg)`;
+  card.style.opacity = '0';
+
+  setTimeout(renderCard, 340);
+}
+
+function finish(){
+  openResult(swipeCat.key);
+}
+
+// ─── DRAG EVENTS ───────────────────────
+const THRESHOLD = 80;
+
+function onDown(e){
+  if(busy) return;
+  dragging = true;
+  sx = e.touches ? e.touches[0].clientX : e.clientX;
+  dx = 0;
+  document.getElementById('swipe-card').style.transition='none';
+  e.preventDefault();
+}
+function onMove(e){
+  if(!dragging) return;
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  dx = cx - sx;
+  const rot = dx * 0.07;
+  document.getElementById('swipe-card').style.transform = `translateX(${dx}px) rotate(${rot}deg)`;
+  const prog = Math.min(Math.abs(dx)/THRESHOLD, 1);
+  if(dx>0){
+    document.getElementById('ov-right').style.background=`rgba(39,174,96,${prog*.18})`;
+    document.getElementById('ov-right').querySelector('.ov-icon').style.opacity=prog*.95;
+    document.getElementById('ov-left').style.background='rgba(231,76,60,0)';
+    document.getElementById('ov-left').querySelector('.ov-icon').style.opacity='0';
+  } else if(dx<0){
+    document.getElementById('ov-left').style.background=`rgba(231,76,60,${prog*.18})`;
+    document.getElementById('ov-left').querySelector('.ov-icon').style.opacity=prog*.95;
+    document.getElementById('ov-right').style.background='rgba(39,174,96,0)';
+    document.getElementById('ov-right').querySelector('.ov-icon').style.opacity='0';
+  } else { resetOverlays(); }
+  e.preventDefault();
+}
+function onUp(){
+  if(!dragging) return;
+  dragging = false;
+  if(Math.abs(dx) > THRESHOLD){
+    choose(dx>0?'right':'left');
+  } else {
+    const card = document.getElementById('swipe-card');
+    card.style.transition = 'transform .35s cubic-bezier(.175,.885,.32,1.275)';
+    card.style.transform = 'translateX(0) rotate(0deg)';
+    resetOverlays();
+  }
+}
+
+// Attach once
+const cardEl = document.getElementById('swipe-card');
+cardEl.addEventListener('touchstart', onDown, {passive:false});
+cardEl.addEventListener('mousedown', onDown);
+window.addEventListener('touchmove', onMove, {passive:false});
+window.addEventListener('mousemove', onMove);
+window.addEventListener('touchend', onUp);
+window.addEventListener('mouseup', onUp);
+
+// ═══════════════════════════════════════
+// RESULT SCREEN
+// ═══════════════════════════════════════
+let resultKey = null;
+
+function openResult(key){
+  resultKey = key;
+  const cat = CATS.find(c=>c.key===key);
+  const s = getS(key);
+  document.getElementById('r-dot').style.background = cat.color;
+  document.getElementById('r-title').textContent = cat.name;
+  document.getElementById('cnt-green').textContent = s.green.length;
+  document.getElementById('cnt-red').textContent = s.red.length;
+  document.getElementById('rs-green').classList.remove('rstack-open');
+  document.getElementById('rs-red').classList.remove('rstack-open');
+  document.getElementById('list-green').style.display='none';
+  document.getElementById('list-red').style.display='none';
+  showScreen('result');
+}
+
+function toggleList(color){
+  const panel = document.getElementById('list-'+color);
+  const stack = document.getElementById('rs-'+color);
+  const other = color==='green'?'red':'green';
+  const isOpen = panel.style.display !== 'none';
+
+  document.getElementById('list-'+other).style.display='none';
+  document.getElementById('rs-'+other).classList.remove('rstack-open');
+
+  if(isOpen){
+    panel.style.display='none';
+    stack.classList.remove('rstack-open');
+  } else {
+    const s = getS(resultKey);
+    const items = color==='green' ? s.green : s.red;
+    const lbl = color==='green' ? '✓ Ja / Positiv' : '✗ Nein / Negativ';
+    const clr = color==='green' ? '#1a7a40' : '#922b21';
+    panel.innerHTML = `
+      <h3 style="color:${clr}">${lbl} (${items.length})</h3>
+      <div class="list-scroll">
+        ${items.length===0
+          ? '<p class="list-empty">Keine Einträge</p>'
+          : items.map(i=>`<div class="list-item">${i}</div>`).join('')}
+      </div>`;
+    panel.style.display='block';
+    stack.classList.add('rstack-open');
+    setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  }
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+renderMenu();
+showScreen('menu');
+</script>
+</body>
+</html>
